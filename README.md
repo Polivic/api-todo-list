@@ -51,6 +51,6 @@ http://localhost:3000/tarefas
 
 ---
 
-💛 **Desenvolvido por:** Natalia Leandro  
+💛 **Desenvolvido por:** Poliana Vitoria 
 📅 **Data:** Novembro de 2025  
 🎓 **Atividade:** API To-Do List (Desenvolvimento Web)

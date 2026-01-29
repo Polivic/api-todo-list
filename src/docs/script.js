@@ -5,16 +5,15 @@ const inputTitulo = document.getElementById("titulo");
 const inputDescricao = document.getElementById("descricao");
 const lista = document.getElementById("lista");
 const msg = document.getElementById("msg");
+const busca = document.getElementById("busca");
+const filtroStatus = document.getElementById("filtroStatus");
 
+let tarefasCache = [];
 
 async function safeJson(res) {
   const text = await res.text();
   if (!text) return null;
-  try {
-    return JSON.parse(text);
-  } catch {
-    return null;
-  }
+  try { return JSON.parse(text); } catch { return null; }
 }
 
 function mostrarMensagem(texto, tipo = "ok") {
@@ -22,147 +21,173 @@ function mostrarMensagem(texto, tipo = "ok") {
   msg.className = `msg ${tipo}`;
 }
 
-async function carregarTarefas() {
-  try {
-    const resposta = await fetch(API_URL);
+function normalizar(str) {
+  return (str || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
 
-    if (!resposta.ok) {
-      throw new Error("Falha ao buscar tarefas");
-    }
+function renderizar(tarefas) {
+  lista.innerHTML = "";
 
-    const tarefas = await resposta.json();
+  if (!tarefas.length) {
+    lista.innerHTML = "<p>Nenhuma tarefa encontrada.</p>";
+    return;
+  }
 
-    lista.innerHTML = "";
+  tarefas.forEach(tarefa => {
+    const item = document.createElement("article");
+    item.className = "item";
+    item.dataset.id = tarefa.id;
 
-    if (!tarefas || tarefas.length === 0) {
-      lista.innerHTML = "<p>Nenhuma tarefa cadastrada.</p>";
-      return;
-    }
-
-    tarefas.forEach((tarefa) => {
-      const card = document.createElement("article");
-      card.className = "item"; // combina com seu CSS (item)
-
-      const concluida = tarefa.status === "concluída";
-
-      card.innerHTML = `
-        <div class="item-top">
-          <div>
-            <h3>${tarefa.titulo}</h3>
-            <p>${tarefa.descricao || ""}</p>
-          </div>
-
-          <span class="badge">
-            ${tarefa.status}
-          </span>
+    item.innerHTML = `
+      <div class="item-top">
+        <div>
+          <h3>${tarefa.titulo}</h3>
+          <p>${tarefa.descricao || ""}</p>
         </div>
+        <span class="badge ${tarefa.status.replace(" ", "-")}">${tarefa.status}</span>
+      </div>
 
-        <div class="actions">
-          <label style="display:flex; gap:8px; align-items:center;">
-            <input type="checkbox" class="chk-status" data-id="${tarefa.id}" ${concluida ? "checked" : ""} />
+      <div class="actions">
+        <div class="left-actions">
+          <label class="chk-wrap">
+            <input type="checkbox" class="chk-status" ${tarefa.status === "concluída" ? "checked" : ""}>
             Concluída
           </label>
 
-          <button class="btn-delete" data-id="${tarefa.id}">
-            Deletar
-          </button>
+          <select class="status-select">
+            <option ${tarefa.status==="a fazer"?"selected":""}>a fazer</option>
+            <option ${tarefa.status==="em andamento"?"selected":""}>em andamento</option>
+            <option ${tarefa.status==="concluída"?"selected":""}>concluída</option>
+          </select>
         </div>
-      `;
 
-      lista.appendChild(card);
-    });
-  } catch (erro) {
-    lista.innerHTML = "<p>Não consegui conectar na API. Ela está ligada?</p>";
-  }
+        <div class="right-actions">
+          <button class="btn ghost btn-edit">Editar</button>
+          <button class="btn danger btn-delete">Deletar</button>
+        </div>
+      </div>
+
+      <div class="editor hidden">
+        <input class="edit-titulo" value="${tarefa.titulo}">
+        <input class="edit-descricao" value="${tarefa.descricao || ""}">
+        <div class="right-actions">
+          <button class="btn primary btn-save">Salvar</button>
+          <button class="btn ghost btn-cancel">Cancelar</button>
+        </div>
+      </div>
+    `;
+
+    lista.appendChild(item);
+  });
 }
 
-form.addEventListener("submit", async (e) => {
+function aplicarFiltros() {
+  const q = normalizar(busca.value);
+  const status = filtroStatus.value;
+
+  let filtradas = tarefasCache;
+
+  if (status !== "todos") {
+    filtradas = filtradas.filter(t => t.status === status);
+  }
+
+  if (q) {
+    filtradas = filtradas.filter(t =>
+      normalizar(t.titulo).includes(q) ||
+      normalizar(t.descricao).includes(q)
+    );
+  }
+
+  renderizar(filtradas);
+}
+
+async function carregarTarefas() {
+  const res = await fetch(API_URL);
+  tarefasCache = await res.json();
+  aplicarFiltros();
+}
+
+form.addEventListener("submit", async e => {
   e.preventDefault();
 
   const titulo = inputTitulo.value.trim();
   const descricao = inputDescricao.value.trim();
 
-  if (!titulo) {
-    mostrarMensagem("O título é obrigatório.", "erro");
-    return;
-  }
+  if (!titulo) return;
 
-  try {
-    const resposta = await fetch(API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ titulo, descricao }),
-    });
+  await fetch(API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ titulo, descricao })
+  });
 
-    const dados = await safeJson(resposta);
+  form.reset();
+  carregarTarefas();
+});
 
-    if (!resposta.ok) {
-      mostrarMensagem(dados?.erro || "Erro ao criar tarefa.", "erro");
-      return;
-    }
+lista.addEventListener("click", async e => {
+  const item = e.target.closest(".item");
+  if (!item) return;
 
-    mostrarMensagem("Tarefa criada com sucesso!", "ok");
-    form.reset();
+  const id = item.dataset.id;
+
+  if (e.target.classList.contains("btn-delete")) {
+    await fetch(`${API_URL}/${id}`, { method: "DELETE" });
     carregarTarefas();
-  } catch (erro) {
-    mostrarMensagem("Erro de conexão com a API.", "erro");
   }
-});
 
-
-lista.addEventListener("click", async (e) => {
-  const botaoDelete = e.target.closest(".btn-delete");
-
-  if (botaoDelete) {
-    const id = botaoDelete.dataset.id;
-
-    try {
-      const resposta = await fetch(`${API_URL}/${id}`, { method: "DELETE" });
-
-      
-      const dados = await safeJson(resposta);
-
-      if (!resposta.ok) {
-        alert(dados?.message || dados?.erro || "Erro ao deletar.");
-        return;
-      }
-
-      carregarTarefas();
-    } catch (erro) {
-      alert("Erro de conexão com a API.");
-    }
+  if (e.target.classList.contains("btn-edit")) {
+    item.querySelector(".editor").classList.remove("hidden");
   }
-});
 
+  if (e.target.classList.contains("btn-cancel")) {
+    item.querySelector(".editor").classList.add("hidden");
+  }
 
-lista.addEventListener("change", async (e) => {
-  const chk = e.target.closest(".chk-status");
-  if (!chk) return;
+  if (e.target.classList.contains("btn-save")) {
+    const titulo = item.querySelector(".edit-titulo").value;
+    const descricao = item.querySelector(".edit-descricao").value;
 
-  const id = chk.dataset.id;
-  const novoStatus = chk.checked ? "concluída" : "a fazer";
-
-  try {
-    // ✅ PUT (mais de acordo com o PDF)
-    const resposta = await fetch(`${API_URL}/${id}`, {
+    await fetch(`${API_URL}/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: novoStatus }),
+      body: JSON.stringify({ titulo, descricao })
     });
 
-    const dados = await safeJson(resposta);
-
-    if (!resposta.ok) {
-      alert(dados?.erro || "Erro ao atualizar status.");
-      carregarTarefas();
-      return;
-    }
-
-    carregarTarefas();
-  } catch (erro) {
-    alert("Erro de conexão com a API.");
     carregarTarefas();
   }
 });
+
+lista.addEventListener("change", async e => {
+  const item = e.target.closest(".item");
+  if (!item) return;
+
+  const id = item.dataset.id;
+
+  if (e.target.classList.contains("chk-status")) {
+    const status = e.target.checked ? "concluída" : "a fazer";
+    await fetch(`${API_URL}/${id}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status })
+    });
+    carregarTarefas();
+  }
+
+  if (e.target.classList.contains("status-select")) {
+    await fetch(`${API_URL}/${id}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: e.target.value })
+    });
+    carregarTarefas();
+  }
+});
+
+busca.addEventListener("input", aplicarFiltros);
+filtroStatus.addEventListener("change", aplicarFiltros);
 
 carregarTarefas();

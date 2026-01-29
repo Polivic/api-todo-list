@@ -1,34 +1,29 @@
 const express = require('express');
-const dotenv = require('dotenv');
 const cors = require('cors');
-
-dotenv.config();
 
 const sequelize = require('./config/database');
 const rotasTarefas = require('./routes/tarefaRoutes');
-const errorHandler = require('./middlewares/errorMiddleware');
 
 const app = express();
-
 
 app.use(cors());
 app.use(express.json());
 
+app.use('/tarefas', rotasTarefas);
 
-app.use('/api/tarefas', rotasTarefas);
+app.get('/health', (req, res) => res.json({ ok: true }));
 
+const PORT = process.env.PORT || 3000;
 
-
-app.use(errorHandler);
-
-sequelize.sync()
-  .then(() => {
-    console.log('Banco de dados conectado!');
-    const port = process.env.PORT || 3000;
-    app.listen(port, () => {
-      console.log(`Servidor rodando na porta ${port}`);
+(async () => {
+  try {
+    await sequelize.authenticate();
+    await sequelize.sync();
+    app.listen(PORT, () => {
+      console.log(`Servidor rodando em http://localhost:${PORT}`);
     });
-  })
-  .catch((err) => {
-    console.error('Erro ao conectar ao banco:', err);
-  });
+  } catch (e) {
+    console.error('Falha ao iniciar API:', e);
+    process.exit(1);
+  }
+})();

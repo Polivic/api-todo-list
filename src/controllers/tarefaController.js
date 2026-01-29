@@ -56,7 +56,13 @@ async function atualizar(req, res) {
       });
     }
 
-    await tarefa.update({ titulo, descricao, status });
+    const dadosAtualizar = {};
+    if (titulo !== undefined) dadosAtualizar.titulo = titulo;
+    if (descricao !== undefined) dadosAtualizar.descricao = descricao;
+    if (status !== undefined) dadosAtualizar.status = status;
+
+    await tarefa.update(dadosAtualizar);
+
     return res.status(200).json({
       message: 'Tarefa atualizada com sucesso!',
       tarefa

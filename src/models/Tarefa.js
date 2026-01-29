@@ -11,12 +11,18 @@ const Tarefa = sequelize.define('Tarefa', {
   },
   descricao: {
     type: DataTypes.STRING,
-    allowNull: true,
+    allowNull: true
   },
   status: {
-    type: DataTypes.ENUM(...STATUS_PERMITIDOS),
+    type: DataTypes.STRING,
     allowNull: false,
-    defaultValue: 'a fazer'
+    defaultValue: 'a fazer',
+    validate: {
+      isIn: {
+        args: [STATUS_PERMITIDOS],
+        msg: `Status inválido. Use um destes: ${STATUS_PERMITIDOS.join(', ')}`
+      }
+    }
   }
 }, {
   tableName: 'tarefas',

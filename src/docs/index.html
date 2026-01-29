@@ -3,20 +3,24 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>To-Do List</title>
+  <title>Organizador de Tarefas</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 
 <body>
-  <header class="container">
-    <h1>Minha To-Do List</h1>
-    <p>Frontend consumindo a API do Módulo 2</p>
+  <header class="container header">
+    <div class="header-box">
+      <h1>Organizador de Tarefas</h1>
+      <p>Adicione, gerencie e organize suas tarefas de forma prática.</p>
+    </div>
   </header>
 
   <main class="container">
-    
     <section class="card" aria-labelledby="titulo-criar">
-      <h2 id="titulo-criar">Criar tarefa</h2>
+      <div class="card-title">
+        <h2 id="titulo-criar">Criar tarefa</h2>
+        <p class="muted">Preencha os campos e clique em adicionar.</p>
+      </div>
 
       <form id="formTarefa">
         <div class="form-grid">
@@ -26,7 +30,7 @@
               id="titulo"
               name="titulo"
               type="text"
-              placeholder="Ex: Estudar Fetch API"
+              placeholder="Ex: Estudar Cálculo II"
               required
             />
           </label>
@@ -37,22 +41,38 @@
               id="descricao"
               name="descricao"
               type="text"
-              placeholder="Ex: Fazer integração com backend"
+              placeholder="Ex: Revisar anotações"
             />
           </label>
 
-          <button type="submit">Adicionar</button>
+          <button type="submit" class="btn primary">Adicionar</button>
         </div>
       </form>
 
       <p id="msg" class="msg" role="status" aria-live="polite"></p>
     </section>
 
-    
     <section class="card" aria-labelledby="titulo-lista">
-      <h2 id="titulo-lista">Minhas tarefas</h2>
+      <div class="card-title">
+        <h2 id="titulo-lista">Minhas tarefas</h2>
 
-      
+        <div class="toolbar">
+          <input
+            id="busca"
+            class="search"
+            type="search"
+            placeholder="Buscar por título ou descrição..."
+          />
+
+          <select id="filtroStatus" class="select">
+            <option value="todos">Todos</option>
+            <option value="a fazer">A fazer</option>
+            <option value="em andamento">Em andamento</option>
+            <option value="concluída">Concluída</option>
+          </select>
+        </div>
+      </div>
+
       <section id="lista" class="lista" aria-live="polite"></section>
     </section>
   </main>
